@@ -1,75 +1,117 @@
-
-import { ApiError } from '@/types/api';
 import { supabase } from '@/integrations/supabase/client';
 
-// Use Supabase URL for API calls if needed
-const API_BASE_URL = import.meta.env.VITE_API_URL || `${supabase.supabaseUrl}/rest/v1`;
+// Use the actual Supabase URL and key directly
+const SUPABASE_URL = 'https://ljczkvavawrrmdvwkkfd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqY3prdmF2YXdycm1kdndra2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwOTM4MTIsImV4cCI6MjA2NjY2OTgxMn0.F83YQadSIlkwicIHExL-e4DPWSpK_6hq4kHMi20_yYs';
 
-class ApiClient {
-  private baseURL: string;
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+}
 
-  constructor(baseURL: string = API_BASE_URL) {
-    this.baseURL = baseURL;
-  }
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-    
-    // Get token from Supabase session
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
+export class ApiError extends Error {
+  status: number;
+  code?: string;
 
-    const config: RequestInit = {
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': supabase.supabaseKey,
-        ...(token && { Authorization: `Bearer ${token}` }),
-        ...options.headers,
-      },
-      ...options,
-    };
-
-    try {
-      const response = await fetch(url, config);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new ApiError(response.status, data.message || 'Request failed');
-      }
-
-      return data;
-    } catch (error) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError(500, 'Network error occurred');
-    }
-  }
-
-  async get<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'GET' });
-  }
-
-  async post<T>(endpoint: string, data?: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-    });
-  }
-
-  async put<T>(endpoint: string, data?: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
-    });
-  }
-
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'DELETE' });
+  constructor(status: number, message: string, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
   }
 }
 
-export const apiClient = new ApiClient();
+// Generic API client using Supabase
+export const apiClient = {
+  get: async <T>(url: string): Promise<T> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const response = await fetch(`${SUPABASE_URL}/rest/v1${url}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
+    });
+
+    if (!response.ok) {
+      throw new ApiError(response.status, `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  post: async <T>(url: string, data: any): Promise<T> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const response = await fetch(`${SUPABASE_URL}/rest/v1${url}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new ApiError(response.status, `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  put: async <T>(url: string, data: any): Promise<T> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const response = await fetch(`${SUPABASE_URL}/rest/v1${url}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new ApiError(response.status, `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  delete: async <T>(url: string): Promise<T> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const response = await fetch(`${SUPABASE_URL}/rest/v1${url}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
+    });
+
+    if (!response.ok) {
+      throw new ApiError(response.status, `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  },
+};
