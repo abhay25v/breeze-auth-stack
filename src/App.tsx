@@ -6,10 +6,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { AnalyticsProvider } from "@/providers/AnalyticsProvider";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import Analytics from "./pages/Analytics";
+import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +40,30 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } 
       />
+      <Route 
+        path="/analytics" 
+        element={
+          <ProtectedRoute>
+            <Analytics />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/profile" 
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/settings" 
+        element={
+          <ProtectedRoute>
+            <Settings />
+          </ProtectedRoute>
+        } 
+      />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -48,7 +76,18 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AppRoutes />
+          <AnalyticsProvider
+            config={{
+              endpoint: import.meta.env.VITE_ANALYTICS_ENDPOINT || '/api/analytics',
+              apiKey: import.meta.env.VITE_ANALYTICS_API_KEY,
+              batchSize: 5,
+              retryAttempts: 3,
+              retryDelay: 1000
+            }}
+            enabled={import.meta.env.MODE !== 'development' || import.meta.env.VITE_ENABLE_ANALYTICS === 'true'}
+          >
+            <AppRoutes />
+          </AnalyticsProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
