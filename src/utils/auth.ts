@@ -1,5 +1,5 @@
 
-import { AuthResponse, LoginCredentials, RegisterCredentials } from '@/types/auth';
+import { AuthResponse, LoginCredentials, RegisterCredentials, User } from '@/types/auth';
 import { apiClient } from './api';
 
 export const authUtils = {
@@ -51,7 +51,7 @@ export const authUtils = {
     }
   },
 
-  getCurrentUser: async () => {
-    return apiClient.get('/auth/me');
+  getCurrentUser: async (): Promise<User> => {
+    return apiClient.get<User>('/auth/me');
   },
 };
