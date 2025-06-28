@@ -1,7 +1,9 @@
 
 import { ApiError } from '@/types/api';
+import { supabase } from '@/integrations/supabase/client';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+// Use Supabase URL for API calls if needed
+const API_BASE_URL = import.meta.env.VITE_API_URL || `${supabase.supabaseUrl}/rest/v1`;
 
 class ApiClient {
   private baseURL: string;
@@ -15,11 +17,15 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
-    const token = localStorage.getItem('auth_token');
+    
+    // Get token from Supabase session
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
 
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
+        'apikey': supabase.supabaseKey,
         ...(token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
       },

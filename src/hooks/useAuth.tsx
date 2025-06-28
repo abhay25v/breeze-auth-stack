@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, AuthState } from '@/types/auth';
 import { authUtils } from '@/utils/auth';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
@@ -22,19 +23,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const initAuth = async () => {
-      const token = authUtils.getToken();
-      
-      if (token && authUtils.isTokenValid(token)) {
-        try {
-          const user = await authUtils.getCurrentUser();
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session);
+        
+        if (session?.user) {
+          const user: User = {
+            id: session.user.id,
+            email: session.user.email!,
+            name: session.user.user_metadata?.name || session.user.email!,
+          };
+          
+          authUtils.setToken(session.access_token);
+          
           setState({
             user,
-            token,
+            token: session.access_token,
             isLoading: false,
             isAuthenticated: true,
           });
-        } catch (error) {
+        } else {
           authUtils.removeToken();
           setState({
             user: null,
@@ -43,26 +52,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             isAuthenticated: false,
           });
         }
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const user: User = {
+          id: session.user.id,
+          email: session.user.email!,
+          name: session.user.user_metadata?.name || session.user.email!,
+        };
+        
+        authUtils.setToken(session.access_token);
+        
+        setState({
+          user,
+          token: session.access_token,
+          isLoading: false,
+          isAuthenticated: true,
+        });
       } else {
         setState(prev => ({ ...prev, isLoading: false }));
       }
-    };
+    });
 
-    initAuth();
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
-      const response = await authUtils.login({ email, password });
+      await authUtils.login({ email, password });
       
-      setState({
-        user: response.user,
-        token: response.token,
-        isLoading: false,
-        isAuthenticated: true,
-      });
-
       toast({
         title: "Login successful",
         description: "Welcome back!",
@@ -81,18 +103,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = async (email: string, password: string, name: string) => {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
-      const response = await authUtils.register({ email, password, name });
+      await authUtils.register({ email, password, name });
       
-      setState({
-        user: response.user,
-        token: response.token,
-        isLoading: false,
-        isAuthenticated: true,
-      });
-
       toast({
         title: "Registration successful",
-        description: "Welcome to the platform!",
+        description: "Please check your email to confirm your account.",
       });
     } catch (error: any) {
       setState(prev => ({ ...prev, isLoading: false }));
@@ -108,16 +123,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       await authUtils.logout();
-    } finally {
-      setState({
-        user: null,
-        token: null,
-        isLoading: false,
-        isAuthenticated: false,
-      });
       toast({
         title: "Logged out",
         description: "You have been logged out successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Logout failed",
+        description: error.message || "Logout failed",
+        variant: "destructive",
       });
     }
   };

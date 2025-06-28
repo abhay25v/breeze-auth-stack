@@ -1,6 +1,6 @@
 
 import { AuthResponse, LoginCredentials, RegisterCredentials, User } from '@/types/auth';
-import { apiClient } from './api';
+import { supabase } from '@/integrations/supabase/client';
 
 export const authUtils = {
   // Token management
@@ -26,32 +26,84 @@ export const authUtils = {
     }
   },
 
-  // API calls
+  // Supabase API calls
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
-    if (response.token) {
-      authUtils.setToken(response.token);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: credentials.email,
+      password: credentials.password,
+    });
+
+    if (error) {
+      throw new Error(error.message);
     }
-    return response;
+
+    if (!data.user || !data.session) {
+      throw new Error('Login failed');
+    }
+
+    const user: User = {
+      id: data.user.id,
+      email: data.user.email!,
+      name: data.user.user_metadata?.name || data.user.email!,
+    };
+
+    const token = data.session.access_token;
+    authUtils.setToken(token);
+
+    return { user, token };
   },
 
   register: async (credentials: RegisterCredentials): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/auth/register', credentials);
-    if (response.token) {
-      authUtils.setToken(response.token);
+    const { data, error } = await supabase.auth.signUp({
+      email: credentials.email,
+      password: credentials.password,
+      options: {
+        data: {
+          name: credentials.name,
+        },
+        emailRedirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
+
+    if (error) {
+      throw new Error(error.message);
     }
-    return response;
+
+    if (!data.user) {
+      throw new Error('Registration failed');
+    }
+
+    const user: User = {
+      id: data.user.id,
+      email: data.user.email!,
+      name: credentials.name,
+    };
+
+    // For email confirmation flow, there might not be a session immediately
+    const token = data.session?.access_token || '';
+    if (token) {
+      authUtils.setToken(token);
+    }
+
+    return { user, token };
   },
 
   logout: async (): Promise<void> => {
-    try {
-      await apiClient.post('/auth/logout');
-    } finally {
-      authUtils.removeToken();
-    }
+    await supabase.auth.signOut();
+    authUtils.removeToken();
   },
 
   getCurrentUser: async (): Promise<User> => {
-    return apiClient.get<User>('/auth/me');
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error || !user) {
+      throw new Error('User not authenticated');
+    }
+
+    return {
+      id: user.id,
+      email: user.email!,
+      name: user.user_metadata?.name || user.email!,
+    };
   },
 };
