@@ -1,7 +1,8 @@
 
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const Header = () => {
@@ -17,6 +18,22 @@ export const Header = () => {
         <nav className="flex items-center space-x-4">
           {isAuthenticated ? (
             <>
+              <Link to="/dashboard">
+                <Button variant="ghost" size="sm">
+                  Dashboard
+                </Button>
+              </Link>
+              <Link to="/analytics">
+                <Button variant="ghost" size="sm">
+                  Analytics
+                </Button>
+              </Link>
+              <Link to="/admin">
+                <Button variant="ghost" size="sm" className="flex items-center space-x-1">
+                  <Shield className="h-4 w-4" />
+                  <span>Admin</span>
+                </Button>
+              </Link>
               <div className="flex items-center space-x-2">
                 <User className="h-4 w-4" />
                 <span className="text-sm font-medium">{user?.name || user?.email}</span>
