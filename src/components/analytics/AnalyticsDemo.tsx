@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useUserAnalytics } from '@/hooks/useUserAnalytics';
 import { initializeAnalytics, getAnalyticsService } from '@/services/analyticsService';
+import { RiskScoreDisplay } from './RiskScoreDisplay';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -177,6 +178,12 @@ export const AnalyticsDemo: React.FC = () => {
           </ul>
         </CardContent>
       </Card>
+
+      {/* Risk Score Assessment */}
+      <RiskScoreDisplay 
+        behaviorData={analytics} 
+        sessionId={sessionId}
+      />
     </div>
   );
 };
