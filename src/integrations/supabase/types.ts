@@ -9,7 +9,42 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      otp_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          ip_address: string | null
+          is_valid: boolean
+          otp_code: string
+          risk_score: number
+          session_id: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          is_valid?: boolean
+          otp_code: string
+          risk_score: number
+          session_id: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          is_valid?: boolean
+          otp_code?: string
+          risk_score?: number
+          session_id?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

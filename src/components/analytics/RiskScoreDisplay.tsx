@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Shield, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { OtpModal } from './OtpModal';
 
 interface RiskScoreData {
   riskScore: number;
@@ -32,6 +33,7 @@ export const RiskScoreDisplay: React.FC<RiskScoreDisplayProps> = ({
   const [riskData, setRiskData] = useState<RiskScoreData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showOtpModal, setShowOtpModal] = useState(false);
   const { toast } = useToast();
 
   const calculateRiskScore = async () => {
@@ -68,6 +70,11 @@ export const RiskScoreDisplay: React.FC<RiskScoreDisplayProps> = ({
           title: "Risk Assessment Complete",
           description: `Risk level: ${data.riskLevel} (${data.riskScore}/100)`,
         });
+
+        // Show OTP modal if risk score is high (> 70)
+        if (data.riskScore > 70) {
+          setShowOtpModal(true);
+        }
       } else {
         throw new Error(data.message || 'Failed to calculate risk score');
       }
@@ -191,6 +198,14 @@ export const RiskScoreDisplay: React.FC<RiskScoreDisplayProps> = ({
           </Alert>
         )}
       </CardContent>
+
+      {/* OTP Modal for high-risk scores */}
+      <OtpModal
+        isOpen={showOtpModal}
+        onClose={() => setShowOtpModal(false)}
+        riskScore={riskData?.riskScore || 0}
+        sessionId={sessionId}
+      />
     </Card>
   );
 };
