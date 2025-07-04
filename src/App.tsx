@@ -13,6 +13,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Analytics from "./pages/Analytics";
 import Admin from "./pages/Admin";
+import Shop from "./pages/Shop";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -57,8 +58,9 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } 
       />
+      <Route path="/shop" element={<Shop />} />
       <Route 
-        path="/profile" 
+        path="/profile"
         element={
           <ProtectedRoute>
             <Profile />

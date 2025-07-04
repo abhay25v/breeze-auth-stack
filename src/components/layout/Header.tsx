@@ -23,6 +23,11 @@ export const Header = () => {
                   Dashboard
                 </Button>
               </Link>
+              <Link to="/shop">
+                <Button variant="ghost" size="sm">
+                  Shop
+                </Button>
+              </Link>
               <Link to="/analytics">
                 <Button variant="ghost" size="sm">
                   Analytics
