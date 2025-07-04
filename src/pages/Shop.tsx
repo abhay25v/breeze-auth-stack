@@ -295,36 +295,6 @@ const ShopPage = () => {
               sessionId={sessionId}
             />
           </div>
-
-          {/* Footer with tracking info */}
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="text-sm">🔐 Security & Analytics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-xs text-muted-foreground grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <div className="font-medium">Session ID</div>
-                  <div className="font-mono">{sessionId.substring(0, 8)}...</div>
-                </div>
-                <div>
-                  <div className="font-medium">Typing Speed</div>
-                  <div>{analytics.typing.wpm} WPM</div>
-                </div>
-                <div>
-                  <div className="font-medium">Mouse Activity</div>
-                  <div>{analytics.mouse.clicks} clicks</div>
-                </div>
-                <div>
-                  <div className="font-medium">Scroll Depth</div>
-                  <div>{analytics.scroll.maxDepth}%</div>
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground mt-2">
-                Your behavior is being tracked for security purposes. All data is encrypted and used only for fraud prevention.
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </Layout>

@@ -196,9 +196,9 @@ const AdminPage = () => {
                       <TableHead>User ID</TableHead>
                       <TableHead>Session ID</TableHead>
                       <TableHead>Risk Score</TableHead>
+                      <TableHead>Risk Factors</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>IP Address</TableHead>
-                      <TableHead>User Agent</TableHead>
+                      <TableHead>Behavior Stats</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -222,13 +222,27 @@ const AdminPage = () => {
                           </div>
                         </TableCell>
                         <TableCell>
+                          <div className="space-y-1">
+                            {attempt.risk_score >= 70 && (
+                              <Badge variant="destructive" className="text-xs">Suspicious Pattern</Badge>
+                            )}
+                            {attempt.risk_score >= 40 && attempt.risk_score < 70 && (
+                              <Badge variant="secondary" className="text-xs">Unusual Behavior</Badge>
+                            )}
+                            {attempt.risk_score < 40 && (
+                              <Badge variant="default" className="text-xs">Normal Activity</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           {getValidationStatus(attempt.is_valid)}
                         </TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {attempt.ip_address || 'Unknown'}
-                        </TableCell>
-                        <TableCell className="text-sm max-w-xs truncate">
-                          {attempt.user_agent || 'Unknown'}
+                        <TableCell>
+                          <div className="text-xs space-y-1">
+                            <div><span className="font-medium">Session:</span> {attempt.session_id.substring(0, 8)}...</div>
+                            <div><span className="font-medium">IP:</span> {attempt.ip_address || 'Unknown'}</div>
+                            <div className="max-w-xs truncate"><span className="font-medium">Agent:</span> {attempt.user_agent || 'Unknown'}</div>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
