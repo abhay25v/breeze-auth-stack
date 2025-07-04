@@ -103,6 +103,40 @@ const ShopPage = () => {
     trackFocus: true,
     sendInterval: 30000, // Send every 30 seconds
     onDataReady: async (data) => {
+      // Store detailed analytics data
+      try {
+        const { error: analyticsError } = await supabase
+          .from('user_analytics')
+          .upsert({
+            session_id: data.sessionId,
+            page_url: window.location.href,
+            user_agent: navigator.userAgent,
+            typing_wpm: data.typing?.wpm || 0,
+            typing_keystrokes: data.typing?.keystrokes || 0,
+            typing_pauses: 0, // Not tracked in current structure
+            typing_corrections: data.typing?.backspaces || 0,
+            mouse_clicks: data.mouse?.clicks || 0,
+            mouse_movements: Math.round(data.mouse?.totalDistance || 0),
+            mouse_velocity: data.mouse?.averageSpeed || 0,
+            mouse_idle_time: data.mouse?.idleTime || 0,
+            scroll_depth: data.scroll?.maxDepth || 0,
+            scroll_speed: data.scroll?.scrollSpeed || 0,
+            scroll_events: Math.round(data.scroll?.totalScrollDistance / 100) || 0, // Estimate scroll events
+            focus_changes: data.focus?.focusEvents || 0,
+            focus_time: data.focus?.totalFocusTime || 0,
+            tab_switches: data.focus?.tabSwitches || 0,
+            interactions_count: (data.mouse?.clicks || 0) + (data.typing?.keystrokes || 0) + Math.round((data.scroll?.totalScrollDistance || 0) / 100)
+          }, {
+            onConflict: 'session_id'
+          });
+
+        if (analyticsError) {
+          console.error('Failed to store analytics:', analyticsError);
+        }
+      } catch (error) {
+        console.error('Analytics storage failed:', error);
+      }
+
       // Automatically calculate risk score and log to database
       try {
         const { data: riskData, error } = await supabase.functions.invoke('risk-score', {

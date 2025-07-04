@@ -45,6 +45,87 @@ export type Database = {
         }
         Relationships: []
       }
+      user_analytics: {
+        Row: {
+          created_at: string
+          focus_changes: number | null
+          focus_time: number | null
+          id: string
+          interactions_count: number | null
+          mouse_clicks: number | null
+          mouse_idle_time: number | null
+          mouse_movements: number | null
+          mouse_velocity: number | null
+          page_url: string | null
+          page_views: number | null
+          scroll_depth: number | null
+          scroll_events: number | null
+          scroll_speed: number | null
+          session_duration: number | null
+          session_id: string
+          tab_switches: number | null
+          typing_corrections: number | null
+          typing_keystrokes: number | null
+          typing_pauses: number | null
+          typing_wpm: number | null
+          updated_at: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          focus_changes?: number | null
+          focus_time?: number | null
+          id?: string
+          interactions_count?: number | null
+          mouse_clicks?: number | null
+          mouse_idle_time?: number | null
+          mouse_movements?: number | null
+          mouse_velocity?: number | null
+          page_url?: string | null
+          page_views?: number | null
+          scroll_depth?: number | null
+          scroll_events?: number | null
+          scroll_speed?: number | null
+          session_duration?: number | null
+          session_id: string
+          tab_switches?: number | null
+          typing_corrections?: number | null
+          typing_keystrokes?: number | null
+          typing_pauses?: number | null
+          typing_wpm?: number | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          focus_changes?: number | null
+          focus_time?: number | null
+          id?: string
+          interactions_count?: number | null
+          mouse_clicks?: number | null
+          mouse_idle_time?: number | null
+          mouse_movements?: number | null
+          mouse_velocity?: number | null
+          page_url?: string | null
+          page_views?: number | null
+          scroll_depth?: number | null
+          scroll_events?: number | null
+          scroll_speed?: number | null
+          session_duration?: number | null
+          session_id?: string
+          tab_switches?: number | null
+          typing_corrections?: number | null
+          typing_keystrokes?: number | null
+          typing_pauses?: number | null
+          typing_wpm?: number | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

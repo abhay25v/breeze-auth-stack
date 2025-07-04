@@ -21,8 +21,36 @@ interface LoginAttempt {
   created_at: string;
 }
 
+interface UserAnalytics {
+  id: string;
+  user_id: string | null;
+  session_id: string;
+  page_url: string | null;
+  user_agent: string | null;
+  typing_wpm: number;
+  typing_keystrokes: number;
+  typing_pauses: number;
+  typing_corrections: number;
+  mouse_clicks: number;
+  mouse_movements: number;
+  mouse_velocity: number;
+  mouse_idle_time: number;
+  scroll_depth: number;
+  scroll_speed: number;
+  scroll_events: number;
+  focus_changes: number;
+  focus_time: number;
+  tab_switches: number;
+  session_duration: number;
+  page_views: number;
+  interactions_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 const AdminPage = () => {
   const [attempts, setAttempts] = useState<LoginAttempt[]>([]);
+  const [analytics, setAnalytics] = useState<UserAnalytics[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -33,19 +61,34 @@ const AdminPage = () => {
       setIsLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
-        .from('otp_attempts')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
+      // Fetch both OTP attempts and user analytics
+      const [attemptsResult, analyticsResult] = await Promise.all([
+        supabase
+          .from('otp_attempts')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(100),
+        supabase
+          .from('user_analytics')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(100)
+      ]);
 
-      if (fetchError) {
-        console.error('Supabase fetch error:', fetchError);
-        throw new Error(fetchError.message);
+      if (attemptsResult.error) {
+        console.error('Supabase fetch error:', attemptsResult.error);
+        throw new Error(attemptsResult.error.message);
       }
 
-      console.log('Fetched attempts:', data?.length || 0, 'records');
-      setAttempts(data || []);
+      if (analyticsResult.error) {
+        console.error('Analytics fetch error:', analyticsResult.error);
+        throw new Error(analyticsResult.error.message);
+      }
+
+      console.log('Fetched attempts:', attemptsResult.data?.length || 0, 'records');
+      console.log('Fetched analytics:', analyticsResult.data?.length || 0, 'records');
+      setAttempts(attemptsResult.data || []);
+      setAnalytics(analyticsResult.data || []);
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to fetch login attempts';
       setError(errorMessage);
@@ -100,7 +143,9 @@ const AdminPage = () => {
     total: attempts.length,
     highRisk: attempts.filter(a => a.risk_score >= 70).length,
     failed: attempts.filter(a => !a.is_valid).length,
-    unique: new Set(attempts.map(a => a.session_id)).size
+    unique: new Set(attempts.map(a => a.session_id)).size,
+    totalAnalytics: analytics.length,
+    avgTypingSpeed: analytics.length > 0 ? Math.round(analytics.reduce((sum, a) => sum + a.typing_wpm, 0) / analytics.length) : 0
   };
 
   return (
@@ -157,13 +202,105 @@ const AdminPage = () => {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Unique Sessions</CardTitle>
+              <CardTitle className="text-sm font-medium">Analytics Sessions</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.unique}</div>
+              <div className="text-2xl font-bold">{stats.totalAnalytics}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Avg Typing Speed</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.avgTypingSpeed} WPM</div>
             </CardContent>
           </Card>
         </div>
+
+        {/* User Analytics Table */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>User Behavior Analytics</CardTitle>
+            <CardDescription>
+              Detailed behavior tracking data from user sessions
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {analytics.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="mb-4">No analytics data found.</p>
+                <p className="text-sm">Visit the <a href="/shop" className="text-primary underline">Shop page</a> and interact with it to generate analytics data.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Session</TableHead>
+                      <TableHead>Typing</TableHead>
+                      <TableHead>Mouse</TableHead>
+                      <TableHead>Scroll</TableHead>
+                      <TableHead>Focus</TableHead>
+                      <TableHead>Interactions</TableHead>
+                      <TableHead>Page</TableHead>
+                      <TableHead>Timestamp</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {analytics.map((record) => (
+                      <TableRow key={record.id}>
+                        <TableCell className="font-mono text-xs">
+                          {record.session_id.substring(0, 8)}...
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-xs space-y-1">
+                            <div><span className="font-medium">WPM:</span> {record.typing_wpm}</div>
+                            <div><span className="font-medium">Keys:</span> {record.typing_keystrokes}</div>
+                            <div><span className="font-medium">Pauses:</span> {record.typing_pauses}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-xs space-y-1">
+                            <div><span className="font-medium">Clicks:</span> {record.mouse_clicks}</div>
+                            <div><span className="font-medium">Moves:</span> {record.mouse_movements}</div>
+                            <div><span className="font-medium">Velocity:</span> {record.mouse_velocity.toFixed(1)}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-xs space-y-1">
+                            <div><span className="font-medium">Depth:</span> {record.scroll_depth}%</div>
+                            <div><span className="font-medium">Speed:</span> {record.scroll_speed.toFixed(1)}</div>
+                            <div><span className="font-medium">Events:</span> {record.scroll_events}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-xs space-y-1">
+                            <div><span className="font-medium">Changes:</span> {record.focus_changes}</div>
+                            <div><span className="font-medium">Time:</span> {Math.round(record.focus_time/1000)}s</div>
+                            <div><span className="font-medium">Tabs:</span> {record.tab_switches}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-center">
+                            <Badge variant="outline">{record.interactions_count}</Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs max-w-xs truncate">
+                          {record.page_url || 'Unknown'}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {formatTimestamp(record.created_at)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {error && (
           <Alert variant="destructive">
@@ -172,12 +309,12 @@ const AdminPage = () => {
           </Alert>
         )}
 
-        {/* Login Attempts Table */}
+        {/* Login Attempts & Risk Assessment Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Login Attempts & Security Events</CardTitle>
+            <CardTitle>Risk Assessment & OTP Attempts</CardTitle>
             <CardDescription>
-              Recent OTP validation attempts with risk assessment data
+              Risk scoring results and OTP validation attempts
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -188,8 +325,8 @@ const AdminPage = () => {
               </div>
             ) : attempts.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <p className="mb-4">No login attempts found.</p>
-                <p className="text-sm">Visit the <a href="/shop" className="text-primary underline">Shop page</a> and interact with it (scroll, click, type) to generate analytics data that will appear here.</p>
+                <p className="mb-4">No risk assessment data found.</p>
+                <p className="text-sm">Risk assessments will appear here after analytics data is processed.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
