@@ -29,6 +29,7 @@ const AdminPage = () => {
 
   const fetchLoginAttempts = async () => {
     try {
+      console.log('Fetching OTP attempts...');
       setIsLoading(true);
       setError(null);
 
@@ -39,9 +40,11 @@ const AdminPage = () => {
         .limit(100);
 
       if (fetchError) {
+        console.error('Supabase fetch error:', fetchError);
         throw new Error(fetchError.message);
       }
 
+      console.log('Fetched attempts:', data?.length || 0, 'records');
       setAttempts(data || []);
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to fetch login attempts';
@@ -185,7 +188,8 @@ const AdminPage = () => {
               </div>
             ) : attempts.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No login attempts found. Attempts will appear here after users interact with the risk assessment system.
+                <p className="mb-4">No login attempts found.</p>
+                <p className="text-sm">Visit the <a href="/shop" className="text-primary underline">Shop page</a> and interact with it (scroll, click, type) to generate analytics data that will appear here.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
