@@ -5,10 +5,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Shield, AlertTriangle, Users } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RefreshCw, Shield, AlertTriangle, Users, ShoppingCart, Eye, Heart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+// Modify interfaces to handle optional metadata
 interface LoginAttempt {
   id: string;
   user_id: string | null;
@@ -19,6 +21,7 @@ interface LoginAttempt {
   ip_address: string | null;
   user_agent: string | null;
   created_at: string;
+  metadata?: any; // Make metadata optional
 }
 
 interface UserAnalytics {
@@ -46,28 +49,41 @@ interface UserAnalytics {
   interactions_count: number;
   created_at: string;
   updated_at: string;
+  metadata?: any; // Make metadata optional
+}
+
+// New interface for shop activities
+interface ShopActivity {
+  sessionId: string;
+  timestamp: string;
+  productViews: number[];
+  cartActions: number;
+  wishlistActions: number;
+  categoryChanges: number;
+  searches: number;
 }
 
 const AdminPage = () => {
   const [attempts, setAttempts] = useState<LoginAttempt[]>([]);
   const [analytics, setAnalytics] = useState<UserAnalytics[]>([]);
+  const [shopActivities, setShopActivities] = useState<ShopActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchLoginAttempts = async () => {
     try {
-      console.log('Fetching OTP attempts...');
+      console.log('Fetching data...');
       setIsLoading(true);
       setError(null);
 
-      // Fetch both OTP attempts and user analytics
+      // Fetch both tables with explicit JSON logging for debugging
       const [attemptsResult, analyticsResult] = await Promise.all([
         supabase
           .from('otp_attempts')
           .select('*')
           .order('created_at', { ascending: false })
-          .limit(100),
+          .limit(1000),
         supabase
           .from('user_analytics')
           .select('*')
@@ -85,10 +101,136 @@ const AdminPage = () => {
         throw new Error(analyticsResult.error.message);
       }
 
-      console.log('Fetched attempts:', attemptsResult.data?.length || 0, 'records');
-      console.log('Fetched analytics:', analyticsResult.data?.length || 0, 'records');
-      setAttempts(attemptsResult.data || []);
-      setAnalytics(analyticsResult.data || []);
+      // Log complete raw data for debugging
+      console.log('Raw attempts data structure:', 
+        attemptsResult.data?.length > 0 ? 
+        JSON.stringify(attemptsResult.data[0]) : 
+        'No attempts data');
+        
+      console.log('Raw analytics data structure:', 
+        analyticsResult.data?.length > 0 ? 
+        JSON.stringify(analyticsResult.data[0]) : 
+        'No analytics data');
+
+      // Type assertions to inform TypeScript about the data structure
+      const attemptsData = attemptsResult.data as LoginAttempt[];
+      const analyticsData = analyticsResult.data as UserAnalytics[];
+      
+      // Directly set analytics data without filtering to ensure we show something
+      setAnalytics(analyticsData || []);
+      
+      // Remove duplicates with proper typing for attempts only
+      const uniqueAttempts = removeDuplicateTimestamps(attemptsData || []);
+      
+      // Filter for security-related attempts
+      const riskAttempts = uniqueAttempts.filter(a => 
+        !a.otp_code.startsWith('SHOP_') || 
+        a.otp_code.startsWith('AUTO_RISK')
+      );
+      setAttempts(riskAttempts);
+      
+      // Extract shop activity metrics with improved approach
+      const shopData: ShopActivity[] = [];
+      const sessionMap = new Map<string, ShopActivity>();
+      
+      // First check if there are any shop activity entries
+      const shopEntries = uniqueAttempts.filter(attempt => 
+        attempt.otp_code?.startsWith('SHOP_ACTIVITY_')
+      );
+      
+      console.log(`Found ${shopEntries.length} shop activity entries`);
+      
+      // Process each shop entry
+      for (const attempt of shopEntries) {
+        try {
+          // Log the raw entry for debugging
+          console.log('Processing shop entry:', attempt.id, attempt.otp_code);
+          
+          // Extract metadata however it's stored
+          let metadata;
+          if (attempt.metadata) {
+            metadata = attempt.metadata;
+          } else {
+            // Try to parse metadata from the raw object
+            const rawObject = attemptsResult.data?.find(a => a.id === attempt.id);
+            if (rawObject) {
+              console.log('Raw object keys:', Object.keys(rawObject));
+              // @ts-ignore - Try all possible metadata field names
+              metadata = rawObject.metadata || rawObject.meta || rawObject.data;
+            }
+          }
+          
+          if (metadata) {
+            console.log('Found metadata:', JSON.stringify(metadata));
+            
+            const activity: ShopActivity = {
+              sessionId: attempt.session_id,
+              timestamp: attempt.created_at,
+              productViews: Array.isArray(metadata.product_views) ? metadata.product_views : [],
+              cartActions: Number(metadata.cart_actions) || 0,
+              wishlistActions: Number(metadata.wishlist_actions) || 0,
+              categoryChanges: Number(metadata.category_changes) || 0,
+              searches: Number(metadata.searches) || 0
+            };
+            
+            shopData.push(activity);
+            // Add to session map for consolidation
+            updateSessionMap(sessionMap, activity);
+          } else {
+            console.log('No metadata found for shop activity:', attempt.id);
+          }
+        } catch (err) {
+          console.error('Error processing shop activity:', err);
+        }
+      }
+      
+      // Also check user_analytics for shop_metrics
+      for (const record of analyticsData || []) {
+        try {
+          // @ts-ignore - Access raw data
+          const rawMeta = record.metadata;
+          
+          if (rawMeta && rawMeta.shop_metrics) {
+            console.log('Found shop_metrics in analytics record:', record.id);
+            
+            const shopMetrics = rawMeta.shop_metrics;
+            const activity: ShopActivity = {
+              sessionId: record.session_id,
+              timestamp: record.created_at,
+              productViews: Array.isArray(shopMetrics.product_views) ? shopMetrics.product_views : [],
+              cartActions: Number(shopMetrics.cart_actions) || 0,
+              wishlistActions: Number(shopMetrics.wishlist_actions) || 0,
+              categoryChanges: Number(shopMetrics.category_changes) || 0,
+              searches: Number(shopMetrics.searches) || 0
+            };
+            
+            shopData.push(activity);
+            // Add to session map for consolidation
+            updateSessionMap(sessionMap, activity);
+          }
+        } catch (err) {
+          console.error('Error extracting shop metrics from analytics:', err);
+        }
+      }
+      
+      // Use direct shop data if available, otherwise use the session map
+      const validShopData = shopData.length > 0 ? shopData : Array.from(sessionMap.values());
+      
+      // Add debug logging
+      console.log(`Final shop activities count: ${validShopData.length}`);
+      validShopData.forEach((activity, i) => {
+        console.log(`Activity ${i}: Session ${activity.sessionId}, Views: ${activity.productViews.length}`);
+      });
+      
+      setShopActivities(validShopData);
+      
+      // Set up polling to keep the data fresh
+      setTimeout(() => {
+        if (document.visibilityState === 'visible') {
+          fetchLoginAttempts();
+        }
+      }, 10000); // More frequent refresh
+      
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to fetch login attempts';
       setError(errorMessage);
@@ -102,8 +244,86 @@ const AdminPage = () => {
     }
   };
 
+  // Helper function to update session map with activity data
+  const updateSessionMap = (
+    sessionMap: Map<string, ShopActivity>, 
+    activity: ShopActivity
+  ) => {
+    const existing = sessionMap.get(activity.sessionId);
+    
+    if (existing) {
+      // Merge the activities
+      const mergedProductViews = [...existing.productViews];
+      
+      // Add any new product views
+      activity.productViews.forEach(id => {
+        if (!mergedProductViews.includes(id)) {
+          mergedProductViews.push(id);
+        }
+      });
+      
+      // Update the existing entry
+      existing.productViews = mergedProductViews;
+      existing.cartActions += activity.cartActions;
+      existing.wishlistActions += activity.wishlistActions;
+      existing.categoryChanges += activity.categoryChanges;
+      existing.searches += activity.searches;
+      
+      // Use the most recent timestamp
+      if (new Date(activity.timestamp) > new Date(existing.timestamp)) {
+        existing.timestamp = activity.timestamp;
+      }
+    } else {
+      // Add new entry
+      sessionMap.set(activity.sessionId, activity);
+    }
+  };
+
+  // Update the removeDuplicateTimestamps function to handle any object with created_at
+  const removeDuplicateTimestamps = <T extends { created_at: string }>(items: T[]): T[] => {
+    if (!items || !Array.isArray(items)) {
+      console.warn('removeDuplicateTimestamps received invalid items:', items);
+      return [];
+    }
+    
+    const seen = new Set<string>();
+    return items.filter(item => {
+      try {
+        // Safely handle potentially invalid date strings
+        let timeKey: string;
+        try {
+          timeKey = new Date(item.created_at).toISOString().substring(0, 16);
+        } catch (e) {
+          console.warn('Invalid date format in item:', item);
+          timeKey = String(Date.now()); // Use current time as fallback
+        }
+        
+        if (seen.has(timeKey)) {
+          return false;
+        }
+        seen.add(timeKey);
+        return true;
+      } catch (e) {
+        console.warn('Error processing item in removeDuplicateTimestamps:', e);
+        return false; // Skip items that cause errors
+      }
+    });
+  };
+
   useEffect(() => {
     fetchLoginAttempts();
+  }, []);
+
+  // Handle page visibility changes to stop/resume polling
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchLoginAttempts();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   const getRiskBadgeVariant = (riskScore: number) => {
@@ -139,12 +359,17 @@ const AdminPage = () => {
     );
   };
 
+  // Simplified stats that focus on the most important metrics
   const stats = {
-    total: attempts.length,
+    totalSessions: new Set([
+      ...attempts.map(a => a.session_id),
+      ...analytics.map(a => a.session_id)
+    ]).size,
     highRisk: attempts.filter(a => a.risk_score >= 70).length,
-    failed: attempts.filter(a => !a.is_valid).length,
-    unique: new Set(attempts.map(a => a.session_id)).size,
-    totalAnalytics: analytics.length,
+    totalShopActivities: shopActivities.reduce((sum, a) => 
+      sum + a.cartActions + a.wishlistActions + a.productViews.length + a.searches + a.categoryChanges, 0),
+    productViews: shopActivities.reduce((sum, activity) => sum + activity.productViews.length, 0),
+    cartActions: shopActivities.reduce((sum, activity) => sum + activity.cartActions, 0),
     avgTypingSpeed: analytics.length > 0 ? Math.round(analytics.reduce((sum, a) => sum + a.typing_wpm, 0) / analytics.length) : 0
   };
 
@@ -153,154 +378,65 @@ const AdminPage = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-            <p className="text-muted-foreground">Monitor login attempts and security events</p>
+            <h1 className="text-3xl font-bold">User Behavior Analytics</h1>
+            <p className="text-muted-foreground">Monitor user activity and security events</p>
           </div>
           <Button onClick={fetchLoginAttempts} disabled={isLoading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
+            Refresh Data
           </Button>
         </div>
 
-        {/* Stats Cards */}
+        {/* Key Metrics */}
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Total Attempts
+                Total Sessions
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
+              <div className="text-2xl font-bold">{stats.totalSessions}</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-destructive" />
-                High Risk
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                High Risk Events
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-destructive">{stats.highRisk}</div>
+              <div className="text-2xl font-bold">{stats.highRisk}</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Shield className="h-4 w-4 text-destructive" />
-                Failed Attempts
+                <ShoppingCart className="h-4 w-4 text-blue-500" />
+                Shop Interactions
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-destructive">{stats.failed}</div>
+              <div className="text-2xl font-bold">{stats.totalShopActivities}</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Analytics Sessions</CardTitle>
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Eye className="h-4 w-4 text-green-500" />
+                Product Views
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalAnalytics}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Avg Typing Speed</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.avgTypingSpeed} WPM</div>
+              <div className="text-2xl font-bold">{stats.productViews}</div>
             </CardContent>
           </Card>
         </div>
-
-        {/* User Analytics Table */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>User Behavior Analytics</CardTitle>
-            <CardDescription>
-              Detailed behavior tracking data from user sessions
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {analytics.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <p className="mb-4">No analytics data found.</p>
-                <p className="text-sm">Visit the <a href="/shop" className="text-primary underline">Shop page</a> and interact with it to generate analytics data.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Session</TableHead>
-                      <TableHead>Typing</TableHead>
-                      <TableHead>Mouse</TableHead>
-                      <TableHead>Scroll</TableHead>
-                      <TableHead>Focus</TableHead>
-                      <TableHead>Interactions</TableHead>
-                      <TableHead>Page</TableHead>
-                      <TableHead>Timestamp</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {analytics.map((record) => (
-                      <TableRow key={record.id}>
-                        <TableCell className="font-mono text-xs">
-                          {record.session_id.substring(0, 8)}...
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs space-y-1">
-                            <div><span className="font-medium">WPM:</span> {record.typing_wpm}</div>
-                            <div><span className="font-medium">Keys:</span> {record.typing_keystrokes}</div>
-                            <div><span className="font-medium">Pauses:</span> {record.typing_pauses}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs space-y-1">
-                            <div><span className="font-medium">Clicks:</span> {record.mouse_clicks}</div>
-                            <div><span className="font-medium">Moves:</span> {record.mouse_movements}</div>
-                            <div><span className="font-medium">Velocity:</span> {record.mouse_velocity.toFixed(1)}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs space-y-1">
-                            <div><span className="font-medium">Depth:</span> {record.scroll_depth}%</div>
-                            <div><span className="font-medium">Speed:</span> {record.scroll_speed.toFixed(1)}</div>
-                            <div><span className="font-medium">Events:</span> {record.scroll_events}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs space-y-1">
-                            <div><span className="font-medium">Changes:</span> {record.focus_changes}</div>
-                            <div><span className="font-medium">Time:</span> {Math.round(record.focus_time/1000)}s</div>
-                            <div><span className="font-medium">Tabs:</span> {record.tab_switches}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-center">
-                            <Badge variant="outline">{record.interactions_count}</Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs max-w-xs truncate">
-                          {record.page_url || 'Unknown'}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {formatTimestamp(record.created_at)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         {error && (
           <Alert variant="destructive">
@@ -309,90 +445,291 @@ const AdminPage = () => {
           </Alert>
         )}
 
-        {/* Login Attempts & Risk Assessment Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Risk Assessment & OTP Attempts</CardTitle>
-            <CardDescription>
-              Risk scoring results and OTP validation attempts
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <RefreshCw className="h-6 w-6 animate-spin mr-2" />
-                Loading attempts...
-              </div>
-            ) : attempts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <p className="mb-4">No risk assessment data found.</p>
-                <p className="text-sm">Risk assessments will appear here after analytics data is processed.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Timestamp</TableHead>
-                      <TableHead>User ID</TableHead>
-                      <TableHead>Session ID</TableHead>
-                      <TableHead>Risk Score</TableHead>
-                      <TableHead>Risk Factors</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Behavior Stats</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {attempts.map((attempt) => (
-                      <TableRow key={attempt.id}>
-                        <TableCell className="font-mono text-sm">
-                          {formatTimestamp(attempt.created_at)}
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {formatUserId(attempt.user_id)}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {attempt.session_id.substring(0, 12)}...
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold">{attempt.risk_score}</span>
-                            <Badge variant={getRiskBadgeVariant(attempt.risk_score)}>
-                              {getRiskLabel(attempt.risk_score)}
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            {attempt.risk_score >= 70 && (
-                              <Badge variant="destructive" className="text-xs">Suspicious Pattern</Badge>
-                            )}
-                            {attempt.risk_score >= 40 && attempt.risk_score < 70 && (
-                              <Badge variant="secondary" className="text-xs">Unusual Behavior</Badge>
-                            )}
-                            {attempt.risk_score < 40 && (
-                              <Badge variant="default" className="text-xs">Normal Activity</Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {getValidationStatus(attempt.is_valid)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs space-y-1">
-                            <div><span className="font-medium">Session:</span> {attempt.session_id.substring(0, 8)}...</div>
-                            <div><span className="font-medium">IP:</span> {attempt.ip_address || 'Unknown'}</div>
-                            <div className="max-w-xs truncate"><span className="font-medium">Agent:</span> {attempt.user_agent || 'Unknown'}</div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Main content using tabs for better organization */}
+        <Tabs defaultValue="shop" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="shop">Shop Analytics</TabsTrigger>
+            <TabsTrigger value="behavior">User Behavior</TabsTrigger>
+            <TabsTrigger value="security">Security Events</TabsTrigger>
+          </TabsList>
+          
+          {/* Shop Analytics Tab */}
+          <TabsContent value="shop" className="space-y-4">
+            <Card className="mb-6">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle>Shop Behavior Analytics</CardTitle>
+                  <CardDescription>
+                    User interactions with products and shopping features
+                  </CardDescription>
+                </div>
+                {!isLoading && shopActivities.length === 0 && (
+                  <Button size="sm" asChild>
+                    <a href="/shop">Generate Data</a>
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+                    Loading shop data...
+                  </div>
+                ) : shopActivities.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p className="mb-4">No shop activity data found.</p>
+                    <p className="text-sm">Visit the <a href="/shop" className="text-primary underline font-medium">Shop page</a> and interact with products to generate data.</p>
+                    <div className="mt-4">
+                      <ol className="list-decimal text-left max-w-md mx-auto">
+                        <li className="mb-1">Click on the Shop page link above</li>
+                        <li className="mb-1">View different products by scrolling</li>
+                        <li className="mb-1">Add items to cart and wishlist</li>
+                        <li className="mb-1">Switch between categories</li>
+                        <li className="mb-1">Search for products</li>
+                        <li>Return to this page to see your activity</li>
+                      </ol>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Session</TableHead>
+                          <TableHead>Product Views</TableHead>
+                          <TableHead>Cart Actions</TableHead>
+                          <TableHead>Wishlist</TableHead>
+                          <TableHead>Categories</TableHead>
+                          <TableHead>Searches</TableHead>
+                          <TableHead>Last Activity</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {shopActivities.map((activity, index) => (
+                          <TableRow key={index}>
+                            <TableCell className="font-mono text-xs">
+                              {activity.sessionId.substring(0, 8)}...
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="bg-green-50">
+                                {activity.productViews.length}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="bg-blue-50">
+                                {activity.cartActions}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="bg-red-50">
+                                {activity.wishlistActions}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {activity.categoryChanges}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {activity.searches}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">
+                              {formatTimestamp(activity.timestamp)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* User Behavior Tab - Improved with better data display */}
+          <TabsContent value="behavior" className="space-y-4">
+            <Card className="mb-6">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle>User Behavior Analytics</CardTitle>
+                  <CardDescription>
+                    Detailed behavior tracking data from user sessions
+                  </CardDescription>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Showing {analytics.length} sessions
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+                    Loading behavior data...
+                  </div>
+                ) : analytics.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p className="mb-4">No user behavior data found.</p>
+                    <p className="text-sm">Visit any page and interact with it to generate analytics data.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Session</TableHead>
+                          <TableHead>Typing</TableHead>
+                          <TableHead>Mouse</TableHead>
+                          <TableHead>Scroll</TableHead>
+                          <TableHead>Focus</TableHead>
+                          <TableHead>Total Interactions</TableHead>
+                          <TableHead>Page</TableHead>
+                          <TableHead>Timestamp</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {analytics.map((record) => (
+                          <TableRow key={record.id}>
+                            <TableCell className="font-mono text-xs">
+                              {record.session_id.substring(0, 8)}...
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-xs space-y-1">
+                                <div><span className="font-medium">WPM:</span> {record.typing_wpm}</div>
+                                <div><span className="font-medium">Keys:</span> {record.typing_keystrokes}</div>
+                                <div><span className="font-medium">Corr:</span> {record.typing_corrections}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-xs space-y-1">
+                                <div><span className="font-medium">Clicks:</span> {record.mouse_clicks}</div>
+                                <div><span className="font-medium">Moves:</span> {record.mouse_movements}</div>
+                                <div><span className="font-medium">Vel:</span> {record.mouse_velocity.toFixed(1)}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-xs space-y-1">
+                                <div><span className="font-medium">Depth:</span> {record.scroll_depth}</div>
+                                <div><span className="font-medium">Speed:</span> {record.scroll_speed.toFixed(1)}</div>
+                                <div><span className="font-medium">Events:</span> {record.scroll_events}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-xs space-y-1">
+                                <div><span className="font-medium">Changes:</span> {record.focus_changes}</div>
+                                <div><span className="font-medium">Time:</span> {Math.round(record.focus_time/1000)}s</div>
+                                <div><span className="font-medium">Tabs:</span> {record.tab_switches}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className="bg-blue-50 hover:bg-blue-100">
+                                {record.interactions_count}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-xs max-w-xs truncate">
+                              {record.page_url ? new URL(record.page_url).pathname : 'Unknown'}
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">
+                              {new Date(record.created_at).toLocaleTimeString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* Security Events Tab */}
+          <TabsContent value="security" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Risk Assessment & OTP Attempts</CardTitle>
+                <CardDescription>
+                  Security events and risk assessments
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+                    Loading attempts...
+                  </div>
+                ) : attempts.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p className="mb-4">No risk assessment data found.</p>
+                    <p className="text-sm">Risk assessments will appear here after analytics data is processed.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Timestamp</TableHead>
+                          <TableHead>User ID</TableHead>
+                          <TableHead>Session ID</TableHead>
+                          <TableHead>Risk Score</TableHead>
+                          <TableHead>Risk Factors</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Behavior Stats</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {attempts.map((attempt) => (
+                          <TableRow key={attempt.id}>
+                            <TableCell className="font-mono text-sm">
+                              {formatTimestamp(attempt.created_at)}
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">
+                              {formatUserId(attempt.user_id)}
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">
+                              {attempt.session_id.substring(0, 12)}...
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold">{attempt.risk_score}</span>
+                                <Badge variant={getRiskBadgeVariant(attempt.risk_score)}>
+                                  {getRiskLabel(attempt.risk_score)}
+                                </Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                {attempt.risk_score >= 70 && (
+                                  <Badge variant="destructive" className="text-xs">Suspicious Pattern</Badge>
+                                )}
+                                {attempt.risk_score >= 40 && attempt.risk_score < 70 && (
+                                  <Badge variant="secondary" className="text-xs">Unusual Behavior</Badge>
+                                )}
+                                {attempt.risk_score < 40 && (
+                                  <Badge variant="default" className="text-xs">Normal Activity</Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {getValidationStatus(attempt.is_valid)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-xs space-y-1">
+                                <div><span className="font-medium">Session:</span> {attempt.session_id.substring(0, 8)}...</div>
+                                <div><span className="font-medium">IP:</span> {attempt.ip_address || 'Unknown'}</div>
+                                <div className="max-w-xs truncate"><span className="font-medium">Agent:</span> {attempt.user_agent || 'Unknown'}</div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
