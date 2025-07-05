@@ -15,6 +15,7 @@ export type Database = {
           id: string
           ip_address: string | null
           is_valid: boolean
+          metadata: Json | null
           otp_code: string
           risk_score: number
           session_id: string
@@ -26,6 +27,7 @@ export type Database = {
           id?: string
           ip_address?: string | null
           is_valid?: boolean
+          metadata?: Json | null
           otp_code: string
           risk_score: number
           session_id: string
@@ -37,6 +39,7 @@ export type Database = {
           id?: string
           ip_address?: string | null
           is_valid?: boolean
+          metadata?: Json | null
           otp_code?: string
           risk_score?: number
           session_id?: string
@@ -52,6 +55,7 @@ export type Database = {
           focus_time: number | null
           id: string
           interactions_count: number | null
+          metadata: Json | null
           mouse_clicks: number | null
           mouse_idle_time: number | null
           mouse_movements: number | null
@@ -78,6 +82,7 @@ export type Database = {
           focus_time?: number | null
           id?: string
           interactions_count?: number | null
+          metadata?: Json | null
           mouse_clicks?: number | null
           mouse_idle_time?: number | null
           mouse_movements?: number | null
@@ -104,6 +109,7 @@ export type Database = {
           focus_time?: number | null
           id?: string
           interactions_count?: number | null
+          metadata?: Json | null
           mouse_clicks?: number | null
           mouse_idle_time?: number | null
           mouse_movements?: number | null

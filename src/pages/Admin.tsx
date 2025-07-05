@@ -83,7 +83,7 @@ const AdminPage = () => {
           .from('otp_attempts')
           .select('*')
           .order('created_at', { ascending: false })
-          .limit(1000),
+          .limit(100),
         supabase
           .from('user_analytics')
           .select('*')
@@ -101,25 +101,14 @@ const AdminPage = () => {
         throw new Error(analyticsResult.error.message);
       }
 
-      // Log complete raw data for debugging
-      console.log('Raw attempts data structure:', 
-        attemptsResult.data?.length > 0 ? 
-        JSON.stringify(attemptsResult.data[0]) : 
-        'No attempts data');
-        
-      console.log('Raw analytics data structure:', 
-        analyticsResult.data?.length > 0 ? 
-        JSON.stringify(analyticsResult.data[0]) : 
-        'No analytics data');
-
       // Type assertions to inform TypeScript about the data structure
       const attemptsData = attemptsResult.data as LoginAttempt[];
       const analyticsData = analyticsResult.data as UserAnalytics[];
       
-      // Directly set analytics data without filtering to ensure we show something
+      // Set analytics data
       setAnalytics(analyticsData || []);
       
-      // Remove duplicates with proper typing for attempts only
+      // Remove duplicates and filter for security-related attempts
       const uniqueAttempts = removeDuplicateTimestamps(attemptsData || []);
       
       // Filter for security-related attempts
@@ -129,40 +118,17 @@ const AdminPage = () => {
       );
       setAttempts(riskAttempts);
       
-      // Extract shop activity metrics with improved approach
+      // Extract shop activity metrics
       const shopData: ShopActivity[] = [];
-      const sessionMap = new Map<string, ShopActivity>();
-      
-      // First check if there are any shop activity entries
       const shopEntries = uniqueAttempts.filter(attempt => 
         attempt.otp_code?.startsWith('SHOP_ACTIVITY_')
       );
       
-      console.log(`Found ${shopEntries.length} shop activity entries`);
-      
-      // Process each shop entry
       for (const attempt of shopEntries) {
         try {
-          // Log the raw entry for debugging
-          console.log('Processing shop entry:', attempt.id, attempt.otp_code);
-          
-          // Extract metadata however it's stored
-          let metadata;
-          if (attempt.metadata) {
-            metadata = attempt.metadata;
-          } else {
-            // Try to parse metadata from the raw object
-            const rawObject = attemptsResult.data?.find(a => a.id === attempt.id);
-            if (rawObject) {
-              console.log('Raw object keys:', Object.keys(rawObject));
-              // @ts-ignore - Try all possible metadata field names
-              metadata = rawObject.metadata || rawObject.meta || rawObject.data;
-            }
-          }
+          let metadata = attempt.metadata;
           
           if (metadata) {
-            console.log('Found metadata:', JSON.stringify(metadata));
-            
             const activity: ShopActivity = {
               sessionId: attempt.session_id,
               timestamp: attempt.created_at,
@@ -174,10 +140,6 @@ const AdminPage = () => {
             };
             
             shopData.push(activity);
-            // Add to session map for consolidation
-            updateSessionMap(sessionMap, activity);
-          } else {
-            console.log('No metadata found for shop activity:', attempt.id);
           }
         } catch (err) {
           console.error('Error processing shop activity:', err);
@@ -187,12 +149,9 @@ const AdminPage = () => {
       // Also check user_analytics for shop_metrics
       for (const record of analyticsData || []) {
         try {
-          // @ts-ignore - Access raw data
           const rawMeta = record.metadata;
           
           if (rawMeta && rawMeta.shop_metrics) {
-            console.log('Found shop_metrics in analytics record:', record.id);
-            
             const shopMetrics = rawMeta.shop_metrics;
             const activity: ShopActivity = {
               sessionId: record.session_id,
@@ -205,31 +164,13 @@ const AdminPage = () => {
             };
             
             shopData.push(activity);
-            // Add to session map for consolidation
-            updateSessionMap(sessionMap, activity);
           }
         } catch (err) {
           console.error('Error extracting shop metrics from analytics:', err);
         }
       }
       
-      // Use direct shop data if available, otherwise use the session map
-      const validShopData = shopData.length > 0 ? shopData : Array.from(sessionMap.values());
-      
-      // Add debug logging
-      console.log(`Final shop activities count: ${validShopData.length}`);
-      validShopData.forEach((activity, i) => {
-        console.log(`Activity ${i}: Session ${activity.sessionId}, Views: ${activity.productViews.length}`);
-      });
-      
-      setShopActivities(validShopData);
-      
-      // Set up polling to keep the data fresh
-      setTimeout(() => {
-        if (document.visibilityState === 'visible') {
-          fetchLoginAttempts();
-        }
-      }, 10000); // More frequent refresh
+      setShopActivities(shopData);
       
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to fetch login attempts';
@@ -310,21 +251,22 @@ const AdminPage = () => {
     });
   };
 
+  // Remove the automatic polling to stop constant refreshing
   useEffect(() => {
     fetchLoginAttempts();
   }, []);
 
-  // Handle page visibility changes to stop/resume polling
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        fetchLoginAttempts();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
+  // Remove the visibility change polling
+  // useEffect(() => {
+  //   const handleVisibilityChange = () => {
+  //     if (document.visibilityState === 'visible') {
+  //       fetchLoginAttempts();
+  //     }
+  //   };
+  //   
+  //   document.addEventListener('visibilitychange', handleVisibilityChange);
+  //   return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  // }, []);
 
   const getRiskBadgeVariant = (riskScore: number) => {
     if (riskScore >= 70) return 'destructive';

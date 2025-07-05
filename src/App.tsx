@@ -6,12 +6,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { AnalyticsProvider } from "@/providers/AnalyticsProvider";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
-import Analytics from "./pages/Analytics";
 import Admin from "./pages/Admin";
 import Shop from "./pages/Shop";
 import Profile from "./pages/Profile";
@@ -39,14 +37,6 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Dashboard />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/analytics" 
-        element={
-          <ProtectedRoute>
-            <Analytics />
           </ProtectedRoute>
         } 
       />
@@ -87,18 +77,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AnalyticsProvider
-            config={{
-              endpoint: import.meta.env.VITE_ANALYTICS_ENDPOINT || '/api/analytics',
-              apiKey: import.meta.env.VITE_ANALYTICS_API_KEY,
-              batchSize: 5,
-              retryAttempts: 3,
-              retryDelay: 1000
-            }}
-            enabled={import.meta.env.MODE !== 'development' || import.meta.env.VITE_ENABLE_ANALYTICS === 'true'}
-          >
-            <AppRoutes />
-          </AnalyticsProvider>
+          <AppRoutes />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
