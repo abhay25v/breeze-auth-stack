@@ -9,6 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RefreshCw, Shield, AlertTriangle, Users, ShoppingCart, Eye, Heart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { SessionActivityModal } from '@/components/analytics/SessionActivityModal';
+import { DatabaseDebugger } from '@/components/debug/DatabaseDebugger';
+import { AnalyticsDebugger } from '@/components/debug/AnalyticsDebugger';
 
 // Modify interfaces to handle optional metadata
 interface LoginAttempt {
@@ -32,7 +35,6 @@ interface UserAnalytics {
   user_agent: string | null;
   typing_wpm: number;
   typing_keystrokes: number;
-  typing_pauses: number;
   typing_corrections: number;
   mouse_clicks: number;
   mouse_movements: number;
@@ -69,6 +71,8 @@ const AdminPage = () => {
   const [shopActivities, setShopActivities] = useState<ShopActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [showSessionModal, setShowSessionModal] = useState(false);
   const { toast } = useToast();
 
   const fetchLoginAttempts = async () => {
@@ -301,6 +305,16 @@ const AdminPage = () => {
     );
   };
 
+  const handleSessionClick = (sessionId: string) => {
+    setSelectedSessionId(sessionId);
+    setShowSessionModal(true);
+  };
+
+  const handleCloseSessionModal = () => {
+    setShowSessionModal(false);
+    setSelectedSessionId(null);
+  };
+
   // Simplified stats that focus on the most important metrics
   const stats = {
     totalSessions: new Set([
@@ -393,6 +407,7 @@ const AdminPage = () => {
             <TabsTrigger value="shop">Shop Analytics</TabsTrigger>
             <TabsTrigger value="behavior">User Behavior</TabsTrigger>
             <TabsTrigger value="security">Security Events</TabsTrigger>
+            <TabsTrigger value="debug">Debug</TabsTrigger>
           </TabsList>
           
           {/* Shop Analytics Tab */}
@@ -490,14 +505,132 @@ const AdminPage = () => {
             </Card>
           </TabsContent>
           
-          {/* User Behavior Tab - Improved with better data display */}
+          {/* User Behavior Tab - Enhanced with detailed tracking information */}
           <TabsContent value="behavior" className="space-y-4">
+            {/* Behavior Tracking Overview */}
+            <Card className="mb-4">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Behavior Tracking Overview
+                </CardTitle>
+                <CardDescription>
+                  Our system tracks comprehensive user behavior patterns for security analysis
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm flex items-center gap-2">
+                      <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                      Typing Patterns
+                    </h4>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>• Words per minute (WPM)</li>
+                      <li>• Total keystrokes</li>
+                      <li>• Typing corrections</li>
+                      <li>• Typing pauses</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm flex items-center gap-2">
+                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                      Mouse Behavior
+                    </h4>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>• Click patterns</li>
+                      <li>• Movement velocity</li>
+                      <li>• Idle time tracking</li>
+                      <li>• Movement count</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm flex items-center gap-2">
+                      <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                      Scroll Patterns
+                    </h4>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>• Scroll depth %</li>
+                      <li>• Scroll speed</li>
+                      <li>• Scroll events count</li>
+                      <li>• Reading patterns</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm flex items-center gap-2">
+                      <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                      Focus & Navigation
+                    </h4>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>• Focus time duration</li>
+                      <li>• Focus changes</li>
+                      <li>• Tab switches</li>
+                      <li>• Page interactions</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Risk Score Calculation */}
+            <Card className="mb-4">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  Risk Score Calculation
+                </CardTitle>
+                <CardDescription>
+                  How behavioral patterns are analyzed to calculate risk scores
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Badge variant="default" className="bg-green-100 text-green-800">
+                      Low Risk (0-39)
+                    </Badge>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>• Consistent typing speed (30-80 WPM)</li>
+                      <li>• Normal mouse movement patterns</li>
+                      <li>• Appropriate scroll behavior</li>
+                      <li>• Reasonable focus time</li>
+                      <li>• Human-like interaction patterns</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                      Medium Risk (40-69)
+                    </Badge>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>• Unusually fast/slow typing</li>
+                      <li>• Irregular mouse movements</li>
+                      <li>• Erratic scrolling patterns</li>
+                      <li>• Frequent focus changes</li>
+                      <li>• Inconsistent behavior</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <Badge variant="destructive" className="bg-red-100 text-red-800">
+                      High Risk (70-100)
+                    </Badge>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>• Bot-like typing patterns</li>
+                      <li>• Automated mouse movements</li>
+                      <li>• Suspicious scroll behavior</li>
+                      <li>• Minimal focus time</li>
+                      <li>• Non-human interaction patterns</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="mb-6">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div>
-                  <CardTitle>User Behavior Analytics</CardTitle>
+                  <CardTitle>Detailed Behavior Analytics</CardTitle>
                   <CardDescription>
-                    Detailed behavior tracking data from user sessions
+                    Individual session behavior data with risk assessment
                   </CardDescription>
                 </div>
                 <div className="text-sm text-muted-foreground">
@@ -521,62 +654,135 @@ const AdminPage = () => {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Session</TableHead>
-                          <TableHead>Typing</TableHead>
-                          <TableHead>Mouse</TableHead>
-                          <TableHead>Scroll</TableHead>
-                          <TableHead>Focus</TableHead>
-                          <TableHead>Total Interactions</TableHead>
-                          <TableHead>Page</TableHead>
-                          <TableHead>Timestamp</TableHead>
+                          <TableHead>Typing Patterns</TableHead>
+                          <TableHead>Mouse Behavior</TableHead>
+                          <TableHead>Scroll Activity</TableHead>
+                          <TableHead>Focus & Navigation</TableHead>
+                          <TableHead>Session Stats</TableHead>
+                          <TableHead>Risk Indicators</TableHead>
+                          <TableHead>Page & Time</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {analytics.map((record) => (
-                          <TableRow key={record.id}>
-                            <TableCell className="font-mono text-xs">
-                              {record.session_id.substring(0, 8)}...
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-xs space-y-1">
-                                <div><span className="font-medium">WPM:</span> {record.typing_wpm}</div>
-                                <div><span className="font-medium">Keys:</span> {record.typing_keystrokes}</div>
-                                <div><span className="font-medium">Corr:</span> {record.typing_corrections}</div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-xs space-y-1">
-                                <div><span className="font-medium">Clicks:</span> {record.mouse_clicks}</div>
-                                <div><span className="font-medium">Moves:</span> {record.mouse_movements}</div>
-                                <div><span className="font-medium">Vel:</span> {record.mouse_velocity.toFixed(1)}</div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-xs space-y-1">
-                                <div><span className="font-medium">Depth:</span> {record.scroll_depth}</div>
-                                <div><span className="font-medium">Speed:</span> {record.scroll_speed.toFixed(1)}</div>
-                                <div><span className="font-medium">Events:</span> {record.scroll_events}</div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-xs space-y-1">
-                                <div><span className="font-medium">Changes:</span> {record.focus_changes}</div>
-                                <div><span className="font-medium">Time:</span> {Math.round(record.focus_time/1000)}s</div>
-                                <div><span className="font-medium">Tabs:</span> {record.tab_switches}</div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge className="bg-blue-50 hover:bg-blue-100">
-                                {record.interactions_count}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-xs max-w-xs truncate">
-                              {record.page_url ? new URL(record.page_url).pathname : 'Unknown'}
-                            </TableCell>
-                            <TableCell className="font-mono text-xs">
-                              {new Date(record.created_at).toLocaleTimeString()}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {analytics.map((record) => {
+                          // Calculate risk indicators based on behavior
+                          const riskFactors = [];
+                          if (record.typing_wpm > 120 || record.typing_wpm < 10) riskFactors.push('Unusual typing speed');
+                          if (record.mouse_velocity > 1000) riskFactors.push('High mouse velocity');
+                          if (record.scroll_speed > 500) riskFactors.push('Rapid scrolling');
+                          if (record.focus_time < 5000) riskFactors.push('Low focus time');
+                          if (record.typing_corrections > record.typing_keystrokes * 0.3) riskFactors.push('High corrections');
+                          
+                          const riskScore = Math.min(100, riskFactors.length * 20);
+                          
+                          return (
+                            <TableRow key={record.id}>
+                              <TableCell className="font-mono text-xs">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-auto p-1 font-mono text-xs hover:bg-blue-50 hover:text-blue-600"
+                                  onClick={() => handleSessionClick(record.session_id)}
+                                  title="Click to view detailed session activity"
+                                >
+                                  {record.session_id.substring(0, 8)}...
+                                </Button>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-xs space-y-1">
+                                  <div className="flex items-center gap-1">
+                                    <span className="font-medium">WPM:</span> 
+                                    <Badge variant={record.typing_wpm > 120 || record.typing_wpm < 10 ? "destructive" : "outline"}>
+                                      {record.typing_wpm}
+                                    </Badge>
+                                  </div>
+                                  <div><span className="font-medium">Keys:</span> {record.typing_keystrokes}</div>
+                                  <div><span className="font-medium">Corrections:</span> {record.typing_corrections}</div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-xs space-y-1">
+                                  <div><span className="font-medium">Clicks:</span> {record.mouse_clicks}</div>
+                                  <div><span className="font-medium">Moves:</span> {record.mouse_movements}</div>
+                                  <div className="flex items-center gap-1">
+                                    <span className="font-medium">Velocity:</span>
+                                    <Badge variant={record.mouse_velocity > 1000 ? "destructive" : "outline"}>
+                                      {record.mouse_velocity.toFixed(1)}
+                                    </Badge>
+                                  </div>
+                                  <div><span className="font-medium">Idle:</span> {Math.round(record.mouse_idle_time/1000)}s</div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-xs space-y-1">
+                                  <div><span className="font-medium">Depth:</span> {record.scroll_depth}%</div>
+                                  <div className="flex items-center gap-1">
+                                    <span className="font-medium">Speed:</span>
+                                    <Badge variant={record.scroll_speed > 500 ? "destructive" : "outline"}>
+                                      {record.scroll_speed.toFixed(1)}
+                                    </Badge>
+                                  </div>
+                                  <div><span className="font-medium">Events:</span> {record.scroll_events}</div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-xs space-y-1">
+                                  <div><span className="font-medium">Changes:</span> {record.focus_changes}</div>
+                                  <div className="flex items-center gap-1">
+                                    <span className="font-medium">Time:</span>
+                                    <Badge variant={record.focus_time < 5000 ? "destructive" : "outline"}>
+                                      {Math.round(record.focus_time/1000)}s
+                                    </Badge>
+                                  </div>
+                                  <div><span className="font-medium">Tabs:</span> {record.tab_switches}</div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-xs space-y-1">
+                                  <div><span className="font-medium">Duration:</span> {Math.round(record.session_duration/1000)}s</div>
+                                  <div><span className="font-medium">Page Views:</span> {record.page_views}</div>
+                                  <div>
+                                    <Badge className="bg-blue-50 hover:bg-blue-100">
+                                      {record.interactions_count} interactions
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-xs space-y-1">
+                                  <div className="flex items-center gap-1">
+                                    <span className="font-medium">Risk:</span>
+                                    <Badge variant={getRiskBadgeVariant(riskScore)}>
+                                      {riskScore}
+                                    </Badge>
+                                  </div>
+                                  {riskFactors.length > 0 && (
+                                    <div className="max-w-xs">
+                                      <div className="text-xs text-muted-foreground">
+                                        {riskFactors.slice(0, 2).map((factor, idx) => (
+                                          <div key={idx} className="truncate">• {factor}</div>
+                                        ))}
+                                        {riskFactors.length > 2 && (
+                                          <div>• +{riskFactors.length - 2} more</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-xs space-y-1">
+                                  <div className="max-w-xs truncate">
+                                    <span className="font-medium">Page:</span> {record.page_url ? new URL(record.page_url).pathname : 'Unknown'}
+                                  </div>
+                                  <div className="font-mono">
+                                    {new Date(record.created_at).toLocaleTimeString()}
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
@@ -629,7 +835,15 @@ const AdminPage = () => {
                               {formatUserId(attempt.user_id)}
                             </TableCell>
                             <TableCell className="font-mono text-xs">
-                              {attempt.session_id.substring(0, 12)}...
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-auto p-1 font-mono text-xs hover:bg-blue-50 hover:text-blue-600"
+                                onClick={() => handleSessionClick(attempt.session_id)}
+                                title="Click to view detailed session activity"
+                              >
+                                {attempt.session_id.substring(0, 12)}...
+                              </Button>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
@@ -671,8 +885,23 @@ const AdminPage = () => {
               </CardContent>
             </Card>
           </TabsContent>
+          
+          {/* Debug Tab */}
+          <TabsContent value="debug" className="space-y-4">
+            <div className="space-y-4">
+              <DatabaseDebugger />
+              <AnalyticsDebugger />
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
+      
+      {/* Session Activity Modal */}
+      <SessionActivityModal
+        isOpen={showSessionModal}
+        onClose={handleCloseSessionModal}
+        sessionId={selectedSessionId || ''}
+      />
     </Layout>
   );
 };

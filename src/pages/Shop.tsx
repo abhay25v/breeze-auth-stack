@@ -231,7 +231,6 @@ const ShopPage = () => {
           user_agent: navigator.userAgent,
           typing_wpm: data.typing?.wpm || 0,
           typing_keystrokes: data.typing?.keystrokes || 0,
-          typing_pauses: 0, 
           typing_corrections: data.typing?.backspaces || 0,
           mouse_clicks: data.mouse?.clicks || 0,
           mouse_movements: Math.round(data.mouse?.totalDistance || 0),
@@ -243,8 +242,10 @@ const ShopPage = () => {
           focus_changes: data.focus?.focusEvents || 0,
           focus_time: data.focus?.totalFocusTime || 0,
           tab_switches: data.focus?.tabSwitches || 0,
+          session_duration: data.sessionDuration || 0,
+          page_views: 1,
           interactions_count: (data.mouse?.clicks || 0) + (data.typing?.keystrokes || 0) + Math.round((data.scroll?.totalScrollDistance || 0) / 100),
-          metadata: JSON.stringify({
+          metadata: {
             shop_metrics: {
               product_views: Array.from(viewedProducts.current),
               cart_actions: cart.length,
@@ -253,7 +254,7 @@ const ShopPage = () => {
               searches: activityMetrics.current.searches,
               timestamp: new Date().toISOString()
             }
-          })
+          }
         };
 
         const { error: analyticsError } = await supabase
@@ -378,7 +379,6 @@ const ShopPage = () => {
             user_agent: navigator.userAgent,
             typing_wpm: 0,
             typing_keystrokes: 0,
-            typing_pauses: 0, 
             typing_corrections: 0,
             mouse_clicks: 0,
             mouse_movements: 0,
@@ -390,6 +390,8 @@ const ShopPage = () => {
             focus_changes: 0,
             focus_time: 0,
             tab_switches: 0,
+            session_duration: 0,
+            page_views: 1,
             interactions_count: 0,
             metadata: { shop_metrics: metadataObj }  // Put shop metrics inside metadata object
           }, {

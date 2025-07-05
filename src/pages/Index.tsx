@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Shield, Zap, Users } from 'lucide-react';
 
 const Index = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   return (
     <Layout>
