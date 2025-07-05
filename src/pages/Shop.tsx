@@ -44,7 +44,7 @@ const products = [
     originalPrice: 149.99,
     rating: 4.3,
     reviews: 892,
-    image: "/placeholder.svg",
+    image: "/images/nike-air-max.webp",
     category: "Shoes",
     savings: 20,
     inStock: true
@@ -56,7 +56,7 @@ const products = [
     originalPrice: 119.99,
     rating: 4.7,
     reviews: 3456,
-    image: "/placeholder.svg",
+    image: "/images/instant-pot.jpg",
     category: "Kitchen",
     savings: 40,
     inStock: false
@@ -68,7 +68,7 @@ const products = [
     originalPrice: 399.99,
     rating: 4.9,
     reviews: 445,
-    image: "/placeholder.svg",
+    image: "/images/lego-creator-expert.jpg",
     category: "Toys",
     savings: 30,
     inStock: true
@@ -80,7 +80,7 @@ const products = [
     originalPrice: 749.99,
     rating: 4.6,
     reviews: 1678,
-    image: "/placeholder.svg",
+    image: "/images/dyson.webp",
     category: "Home",
     savings: 100,
     inStock: true
@@ -92,7 +92,7 @@ const products = [
     originalPrice: 499.99,
     rating: 4.2,
     reviews: 978,
-    image: "/hp-pavilion-15.jpg",
+    image: "/images/hp-pavalion.webp",
     category: "Electronics",
     savings: 50,
     inStock: true
@@ -104,7 +104,7 @@ const products = [
     originalPrice: 549.99,
     rating: 4.8,
     reviews: 3120,
-    image: "/xbox-series-x.jpg",
+    image: "/images/xbox.webp",
     category: "Electronics",
     savings: 50,
     inStock: true
@@ -116,7 +116,7 @@ const products = [
     originalPrice: 79.99,
     rating: 4.0,
     reviews: 542,
-    image: "/sunbeam-microwave.jpg",
+    image: "/images/sunbeam.webp",
     category: "Kitchen",
     savings: 20,
     inStock: true
@@ -128,7 +128,7 @@ const products = [
     originalPrice: 1.48,
     rating: 4.5,
     reviews: 1832,
-    image: "https://i5.walmartimages.com/seo/Great-Value-White-Bread-20-oz_5d82b8b9-0da5-4b85-98c8-86d8bca4e88c.5454ef2b3f9c38a30cca7d2a5d60318d.jpeg",
+    image: "/images/bread.avif",
     category: "Groceries",
     savings: 0,
     inStock: true
@@ -140,7 +140,7 @@ const products = [
     originalPrice: 6.47,
     rating: 4.7,
     reviews: 942,
-    image: "https://i5.walmartimages.com/seo/Equate-Pain-Relief-Extra-Strength-Acetaminophen-Caplets-500-mg-100-Ct_1e36ec0b-23c0-4d48-b2a9-cff210886be2.34ac1e817d423a07c8fdd978f636cf0c.jpeg",
+    image: "/images/medicine.webp",
     category: "Health",
     savings: 1.49,
     inStock: true
@@ -152,7 +152,7 @@ const products = [
     originalPrice: 4.96,
     rating: 4.2,
     reviews: 2756,
-    image: "https://i5.walmartimages.com/seo/Mainstays-Value-6-Piece-Bath-Towel-Set-Grey_ff48d5d5-fce7-4eba-9a8f-9d6037abe1d1.b1cdd3fb2be9c6b0322edd224cf54294.jpeg",
+    image: "/images/towel.webp",
     category: "Home",
     savings: 1.03,
     inStock: true
@@ -164,7 +164,7 @@ const products = [
     originalPrice: 12.97,
     rating: 4.8,
     reviews: 5462,
-    image: "https://i5.walmartimages.com/seo/Ozark-Trail-20-Ounce-Double-Wall-Vacuum-Sealed-Tumbler_80c9f43a-a997-4afc-881d-087d7c2b6c61.79eac1ccd697d11979e56c91618c7e0d.jpeg",
+    image: "/images/tumbler.webp",
     category: "Kitchen",
     savings: 3.09,
     inStock: true
@@ -176,7 +176,7 @@ const products = [
     originalPrice: 3.97,
     rating: 4.6,
     reviews: 1243,
-    image: "https://i5.walmartimages.com/seo/Summer-s-Eve-Simply-Sensitive-Gentle-Cleansing-Wash-for-Sensitive-Skin-9-oz_262e5771-eabc-44a6-a43d-9ac3c47e9a7f.aee6f6e81524573e3e0f26322c8d0251.jpeg",
+    image: "/images/sunscreen.webp",
     category: "Health",
     savings: 0,
     inStock: true
@@ -189,19 +189,19 @@ const deals = [
   {
     title: "Flash Deals",
     description: "Up to 45% off",
-    image: "https://i5.walmartimages.com/dfw/4ff9c6c9-b2f6/k2-_67cf7311-9872-49af-b335-b95e4cc91635.v1.jpg",
+    image: "/images/flash-1.jpg",
     linkText: "Shop now"
   },
   {
     title: "Summer home trends",
     description: "Refresh your space",
-    image: "https://i5.walmartimages.com/dfw/4ff9c6c9-ad46/k2-_ffc22075-2fea-4ef5-9a2e-f0d0f196bc5b.v1.jpg",
+    image: "/images/flash-2.jpg",
     linkText: "Shop home"
   },
   {
     title: "Save on home appliances",
     description: "Up to 40% off",
-    image: "https://i5.walmartimages.com/dfw/4ff9c6c9-906a/k2-_a611ffa7-1c4a-473c-8389-9adddd901743.v1.jpg",
+    image: "/images/flash-3.webp",
     linkText: "Shop now"
   }
 ];
