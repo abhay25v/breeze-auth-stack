@@ -8,59 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Bell, Shield, Palette, Globe, Database, Trash2 } from 'lucide-react';
-import { useUserAnalytics } from '@/hooks/useUserAnalytics';
-import { supabase } from '@/integrations/supabase/client';
 
 const Settings = () => {
-  // Add analytics tracking for Settings page
-  const { analytics, sendAnalytics, sessionId } = useUserAnalytics({
-    trackTyping: true,
-    trackScroll: true,
-    trackMouse: true,
-    trackFocus: true,
-    sendInterval: 15000, // Send every 15 seconds
-    onDataReady: async (data) => {
-      try {
-        const analyticsPayload = {
-          session_id: data.sessionId,
-          page_url: window.location.href,
-          user_agent: navigator.userAgent,
-          typing_wpm: data.typing?.wpm || 0,
-          typing_keystrokes: data.typing?.keystrokes || 0,
-          typing_corrections: data.typing?.backspaces || 0,
-          mouse_clicks: data.mouse?.clicks || 0,
-          mouse_movements: Math.round(data.mouse?.totalDistance || 0),
-          mouse_velocity: data.mouse?.averageSpeed || 0,
-          mouse_idle_time: data.mouse?.idleTime || 0,
-          scroll_depth: data.scroll?.maxDepth || 0,
-          scroll_speed: data.scroll?.scrollSpeed || 0,
-          scroll_events: Math.round(data.scroll?.totalScrollDistance / 100) || 0,
-          focus_changes: data.focus?.focusEvents || 0,
-          focus_time: data.focus?.totalFocusTime || 0,
-          tab_switches: data.focus?.tabSwitches || 0,
-          session_duration: data.sessionDuration || 0,
-          page_views: 1,
-          interactions_count: (data.mouse?.clicks || 0) + (data.typing?.keystrokes || 0),
-          metadata: {
-            page_type: 'settings',
-            timestamp: new Date().toISOString()
-          }
-        };
-
-        const { error } = await supabase
-          .from('user_analytics')
-          .upsert(analyticsPayload, {
-            onConflict: 'session_id'
-          });
-
-        if (error) {
-          console.error('Failed to store Settings analytics:', error);
-        }
-      } catch (error) {
-        console.error('Settings analytics storage failed:', error);
-      }
-    }
-  });
   return (
     <Layout>
       <div className="space-y-6">

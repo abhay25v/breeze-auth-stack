@@ -223,6 +223,7 @@ const ShopPage = () => {
     onDataReady: async (data) => {
       // Store detailed analytics data in user_analytics table
       try {
+        console.log('📊 Analytics data received:', data);
         console.log('📊 Sending detailed user analytics data to user_analytics table...', data);
         
          const analyticsPayload = {
