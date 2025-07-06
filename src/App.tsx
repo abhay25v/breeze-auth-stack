@@ -14,6 +14,7 @@ import Admin from "./pages/Admin";
 import Shop from "./pages/Shop";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
+import Debug from "./pages/Debug";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const AppRoutes = () => {
         } 
       />
       <Route path="/shop" element={<Shop />} />
+      <Route path="/debug" element={<Debug />} />
       <Route 
         path="/profile"
         element={

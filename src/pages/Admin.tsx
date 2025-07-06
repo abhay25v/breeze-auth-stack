@@ -10,8 +10,6 @@ import { RefreshCw, Shield, AlertTriangle, Users, ShoppingCart, Eye, Heart } fro
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { SessionActivityModal } from '@/components/analytics/SessionActivityModal';
-import { DatabaseDebugger } from '@/components/debug/DatabaseDebugger';
-import { AnalyticsDebugger } from '@/components/debug/AnalyticsDebugger';
 
 // Modify interfaces to handle optional metadata
 interface LoginAttempt {
@@ -407,7 +405,6 @@ const AdminPage = () => {
             <TabsTrigger value="shop">Shop Analytics</TabsTrigger>
             <TabsTrigger value="behavior">User Behavior</TabsTrigger>
             <TabsTrigger value="security">Security Events</TabsTrigger>
-            <TabsTrigger value="debug">Debug</TabsTrigger>
           </TabsList>
           
           {/* Shop Analytics Tab */}
@@ -886,13 +883,6 @@ const AdminPage = () => {
             </Card>
           </TabsContent>
           
-          {/* Debug Tab */}
-          <TabsContent value="debug" className="space-y-4">
-            <div className="space-y-4">
-              <DatabaseDebugger />
-              <AnalyticsDebugger />
-            </div>
-          </TabsContent>
         </Tabs>
       </div>
       
