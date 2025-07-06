@@ -225,46 +225,46 @@ const ShopPage = () => {
       try {
         console.log('📊 Sending detailed user analytics data to user_analytics table...', data);
         
-        const analyticsPayload = {
-          session_id: data.sessionId,
-          page_url: window.location.href,
-          user_agent: navigator.userAgent,
-          typing_wpm: data.typing?.wpm || 0,
-          typing_keystrokes: data.typing?.keystrokes || 0,
-          typing_corrections: data.typing?.backspaces || 0,
-          mouse_clicks: data.mouse?.clicks || 0,
-          mouse_movements: Math.round(data.mouse?.totalDistance || 0),
-          mouse_velocity: data.mouse?.averageSpeed || 0,
-          mouse_idle_time: data.mouse?.idleTime || 0,
-          scroll_depth: data.scroll?.maxDepth || 0,
-          scroll_speed: data.scroll?.scrollSpeed || 0,
-          scroll_events: Math.round(data.scroll?.totalScrollDistance / 100) || 0,
-          focus_changes: data.focus?.focusEvents || 0,
-          focus_time: data.focus?.totalFocusTime || 0,
-          tab_switches: data.focus?.tabSwitches || 0,
-          session_duration: data.sessionDuration || 0,
-          page_views: 1,
-          interactions_count: (data.mouse?.clicks || 0) + (data.typing?.keystrokes || 0) + Math.round((data.scroll?.totalScrollDistance || 0) / 100),
-          metadata: {
-            page_type: 'shop',
-            shop_metrics: {
-              product_views: Array.from(viewedProducts.current),
-              cart_actions: cart.length,
-              wishlist_actions: wishlist.length,
-              category_changes: activityMetrics.current.categoryChanges,
-              searches: activityMetrics.current.searches,
-              current_category: selectedCategory,
-              search_term: searchTerm,
-              timestamp: new Date().toISOString()
-            }
-          }
-        };
+         const analyticsPayload = {
+           session_id: data.sessionId,
+           user_id: null, // Since we don't have user auth on shop page
+           page_url: window.location.href,
+           user_agent: navigator.userAgent,
+           typing_wpm: data.typing?.wpm || 0,
+           typing_keystrokes: data.typing?.keystrokes || 0,
+           typing_corrections: data.typing?.backspaces || 0,
+           mouse_clicks: data.mouse?.clicks || 0,
+           mouse_movements: Math.round(data.mouse?.totalDistance || 0),
+           mouse_velocity: data.mouse?.averageSpeed || 0,
+           mouse_idle_time: data.mouse?.idleTime || 0,
+           scroll_depth: data.scroll?.maxDepth || 0,
+           scroll_speed: data.scroll?.scrollSpeed || 0,
+           scroll_events: Math.round(data.scroll?.totalScrollDistance / 100) || 0,
+           focus_changes: data.focus?.focusEvents || 0,
+           focus_time: data.focus?.totalFocusTime || 0,
+           tab_switches: data.focus?.tabSwitches || 0,
+           session_duration: data.sessionDuration || 0,
+           page_views: 1,
+           interactions_count: (data.mouse?.clicks || 0) + (data.typing?.keystrokes || 0) + Math.round((data.scroll?.totalScrollDistance || 0) / 100),
+           metadata: {
+             page_type: 'shop',
+             real_data: true, // Mark as real data, not test data
+             shop_metrics: {
+               product_views: Array.from(viewedProducts.current),
+               cart_actions: cart.length,
+               wishlist_actions: wishlist.length,
+               category_changes: activityMetrics.current.categoryChanges,
+               searches: activityMetrics.current.searches,
+               current_category: selectedCategory,
+               search_term: searchTerm,
+               timestamp: new Date().toISOString()
+             }
+           }
+         };
 
-        const { error: analyticsError } = await supabase
-          .from('user_analytics')
-          .upsert(analyticsPayload, {
-            onConflict: 'session_id'
-          });
+         const { error: analyticsError } = await supabase
+           .from('user_analytics')
+           .insert(analyticsPayload); // Use insert instead of upsert to create new records
 
         if (analyticsError) {
           console.error('❌ Failed to store user_analytics:', analyticsError);
