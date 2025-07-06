@@ -221,9 +221,9 @@ const ShopPage = () => {
     trackFocus: true,
     sendInterval: 5000, // Send every 5 seconds for more immediate updates
     onDataReady: async (data) => {
-      // Store detailed analytics data
+      // Store detailed analytics data in user_analytics table
       try {
-        console.log('Sending user analytics data...');
+        console.log('📊 Sending detailed user analytics data to user_analytics table...', data);
         
         const analyticsPayload = {
           session_id: data.sessionId,
@@ -246,12 +246,15 @@ const ShopPage = () => {
           page_views: 1,
           interactions_count: (data.mouse?.clicks || 0) + (data.typing?.keystrokes || 0) + Math.round((data.scroll?.totalScrollDistance || 0) / 100),
           metadata: {
+            page_type: 'shop',
             shop_metrics: {
               product_views: Array.from(viewedProducts.current),
               cart_actions: cart.length,
               wishlist_actions: wishlist.length,
               category_changes: activityMetrics.current.categoryChanges,
               searches: activityMetrics.current.searches,
+              current_category: selectedCategory,
+              search_term: searchTerm,
               timestamp: new Date().toISOString()
             }
           }
@@ -264,43 +267,12 @@ const ShopPage = () => {
           });
 
         if (analyticsError) {
-          console.error('Failed to store analytics:', analyticsError);
+          console.error('❌ Failed to store user_analytics:', analyticsError);
         } else {
-          console.log('Successfully stored analytics');
+          console.log('✅ Successfully stored detailed analytics to user_analytics table');
         }
       } catch (error) {
-        console.error('Analytics storage failed:', error);
-      }
-
-      // Automatically calculate risk score and log to database
-      try {
-        const { data: riskData, error } = await supabase.functions.invoke('risk-score', {
-          body: {
-            ...data,
-            pageUrl: window.location.href,
-            userAgent: navigator.userAgent
-          }
-        });
-
-        if (riskData?.success && riskData.riskScore > 0) {
-          // Log the risk assessment to database
-          const { error: logError } = await supabase
-            .from('otp_attempts')
-            .insert({
-              session_id: data.sessionId,
-              risk_score: riskData.riskScore,
-              otp_code: 'AUTO_RISK_' + Date.now(), // Automated risk check
-              is_valid: true,
-              ip_address: null,
-              user_agent: data.userAgent
-            });
-
-          if (logError) {
-            console.error('Failed to log risk assessment:', logError);
-          }
-        }
-      } catch (error) {
-        console.error('Risk assessment failed:', error);
+        console.error('❌ User analytics storage failed:', error);
       }
     }
   });
