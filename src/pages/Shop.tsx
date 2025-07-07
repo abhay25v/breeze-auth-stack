@@ -211,71 +211,16 @@ const ShopPage = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [cart, setCart] = useState<number[]>([]);
   const [wishlist, setWishlist] = useState<number[]>([]);
+  const [sessionStartTime] = useState(Date.now()); // Track session start time
   const { toast } = useToast();
 
-  // Initialize analytics tracking with more aggressive data sending
+  // Initialize analytics tracking with immediate data collection
   const { analytics, sendAnalytics, sessionId } = useUserAnalytics({
     trackTyping: true,
     trackScroll: true,
     trackMouse: true,
     trackFocus: true,
-    sendInterval: 5000, // Send every 5 seconds for more immediate updates
-    onDataReady: async (data) => {
-      // Store detailed analytics data in user_analytics table
-      try {
-        console.log('📊 Analytics data received:', data);
-        console.log('📊 Sending detailed user analytics data to user_analytics table...', data);
-        
-         const analyticsPayload = {
-           session_id: data.sessionId,
-           user_id: null, // Since we don't have user auth on shop page
-           page_url: window.location.href,
-           user_agent: navigator.userAgent,
-           typing_wpm: data.typing?.wpm || 0,
-           typing_keystrokes: data.typing?.keystrokes || 0,
-           typing_corrections: data.typing?.backspaces || 0,
-           mouse_clicks: data.mouse?.clicks || 0,
-           mouse_movements: Math.round(data.mouse?.totalDistance || 0),
-           mouse_velocity: data.mouse?.averageSpeed || 0,
-           mouse_idle_time: data.mouse?.idleTime || 0,
-           scroll_depth: data.scroll?.maxDepth || 0,
-           scroll_speed: data.scroll?.scrollSpeed || 0,
-           scroll_events: Math.round(data.scroll?.totalScrollDistance / 100) || 0,
-           focus_changes: data.focus?.focusEvents || 0,
-           focus_time: data.focus?.totalFocusTime || 0,
-           tab_switches: data.focus?.tabSwitches || 0,
-           session_duration: data.sessionDuration || 0,
-           page_views: 1,
-           interactions_count: (data.mouse?.clicks || 0) + (data.typing?.keystrokes || 0) + Math.round((data.scroll?.totalScrollDistance || 0) / 100),
-           metadata: {
-             page_type: 'shop',
-             real_data: true, // Mark as real data, not test data
-             shop_metrics: {
-               product_views: Array.from(viewedProducts.current),
-               cart_actions: cart.length,
-               wishlist_actions: wishlist.length,
-               category_changes: activityMetrics.current.categoryChanges,
-               searches: activityMetrics.current.searches,
-               current_category: selectedCategory,
-               search_term: searchTerm,
-               timestamp: new Date().toISOString()
-             }
-           }
-         };
-
-         const { error: analyticsError } = await supabase
-           .from('user_analytics')
-           .insert(analyticsPayload); // Use insert instead of upsert to create new records
-
-        if (analyticsError) {
-          console.error('❌ Failed to store user_analytics:', analyticsError);
-        } else {
-          console.log('✅ Successfully stored detailed analytics to user_analytics table');
-        }
-      } catch (error) {
-        console.error('❌ User analytics storage failed:', error);
-      }
-    }
+    sendInterval: 8000, // Send every 8 seconds to allow data accumulation
   });
 
   // Filter products based on search term and selected category
@@ -298,106 +243,99 @@ const ShopPage = () => {
     lastProcessedTime: Date.now()
   });
   
-  // Process and send activity data with better handling of metadata
+  // Send complete analytics data every 10 seconds
   useEffect(() => {
-    const processActivityData = async () => {
-      const now = Date.now();
-      // Only proceed if we have activity to report
-      const hasActivity = 
-        activityMetrics.current.productViews.size > 0 || 
-        activityMetrics.current.cartActions > 0 || 
-        activityMetrics.current.wishlistActions > 0 ||
-        activityMetrics.current.categoryChanges > 0 ||
-        activityMetrics.current.searches > 0;
+    const sendCompleteAnalytics = async () => {
+      if (!analytics || !sessionId) return;
       
-      if (!hasActivity) return;
+      console.log('📊 Current analytics state:', analytics);
       
-      console.log('Processing shop activity metrics...');
-      
+      // Get current activity metrics
+      const currentShopMetrics = {
+        product_views: Array.from(activityMetrics.current.productViews),
+        cart_actions: activityMetrics.current.cartActions,
+        wishlist_actions: activityMetrics.current.wishlistActions,
+        category_changes: activityMetrics.current.categoryChanges,
+        searches: activityMetrics.current.searches,
+        current_category: selectedCategory,
+        search_term: searchTerm,
+        timestamp: new Date().toISOString()
+      };
+
       try {
-        // Create a plain object for the metadata (not using complex structures)
-        const metadataObj = {
-          product_views: Array.from(activityMetrics.current.productViews),
-          cart_actions: activityMetrics.current.cartActions,
-          wishlist_actions: activityMetrics.current.wishlistActions,
-          category_changes: activityMetrics.current.categoryChanges, 
-          searches: activityMetrics.current.searches,
-          timestamp: new Date().toISOString()
-        };
-        
-        console.log('Sending shop activity data:', JSON.stringify(metadataObj));
-
-        // Send as plain object - works for JSONB columns
-        const { error } = await supabase.from('otp_attempts').insert({
+        // Send real behavioral analytics to user_analytics table
+        const analyticsPayload = {
           session_id: sessionId,
-          risk_score: 10,
-          otp_code: `SHOP_ACTIVITY_${now}`,
-          is_valid: true,
+          user_id: null,
+          page_url: window.location.href,
           user_agent: navigator.userAgent,
-          metadata: metadataObj  // Plain object for JSONB columns
-        });
-        
-        if (error) {
-          console.error('Failed to store shop activity:', error);
-        } else {
-          console.log('Successfully stored shop activity');
-        }
+          typing_wpm: analytics.typing?.wpm || 0,
+          typing_keystrokes: analytics.typing?.keystrokes || 0,
+          typing_corrections: analytics.typing?.backspaces || 0,
+          mouse_clicks: analytics.mouse?.clicks || 0,
+          mouse_movements: Math.round(analytics.mouse?.totalDistance || 0),
+          mouse_velocity: analytics.mouse?.averageSpeed || 0,
+          mouse_idle_time: analytics.mouse?.idleTime || 0,
+          scroll_depth: analytics.scroll?.maxDepth || 0,
+          scroll_speed: analytics.scroll?.scrollSpeed || 0,
+          scroll_events: Math.round((analytics.scroll?.totalScrollDistance || 0) / 100),
+          focus_changes: analytics.focus?.focusEvents || 0,
+          focus_time: analytics.focus?.totalFocusTime || 0,
+          tab_switches: analytics.focus?.tabSwitches || 0,
+          session_duration: Date.now() - sessionStartTime,
+          page_views: 1,
+          interactions_count: (analytics.mouse?.clicks || 0) + (analytics.typing?.keystrokes || 0) + Math.round((analytics.scroll?.totalScrollDistance || 0) / 100),
+          metadata: {
+            page_type: 'shop',
+            real_data: true,
+            shop_metrics: currentShopMetrics
+          }
+        };
 
-        // Update analytics data too - analytics should have shop metrics in metadata
+        console.log('📊 Sending detailed analytics:', analyticsPayload);
+
         const { error: analyticsError } = await supabase
           .from('user_analytics')
-          .upsert({
-            session_id: sessionId,
-            page_url: window.location.href,
-            user_agent: navigator.userAgent,
-            typing_wpm: 0,
-            typing_keystrokes: 0,
-            typing_corrections: 0,
-            mouse_clicks: 0,
-            mouse_movements: 0,
-            mouse_velocity: 0,
-            mouse_idle_time: 0,
-            scroll_depth: 0,
-            scroll_speed: 0,
-            scroll_events: 0,
-            focus_changes: 0,
-            focus_time: 0,
-            tab_switches: 0,
-            session_duration: 0,
-            page_views: 1,
-            interactions_count: 0,
-            metadata: { shop_metrics: metadataObj }  // Put shop metrics inside metadata object
-          }, {
-            onConflict: 'session_id'
-          });
-        
+          .insert(analyticsPayload);
+
         if (analyticsError) {
-          console.error('Failed to update analytics with shop data:', analyticsError);
+          console.error('❌ Failed to store detailed analytics:', analyticsError);
+        } else {
+          console.log('✅ Successfully stored detailed analytics');
         }
 
-        // Reset the metrics after sending
-        activityMetrics.current = {
-          productViews: new Set<number>(),
-          cartActions: 0,
-          wishlistActions: 0, 
-          categoryChanges: 0,
-          searches: 0,
-          lastProcessedTime: now
-        };
+        // Also send shop activity to otp_attempts for quick access
+        if (currentShopMetrics.product_views.length > 0 || 
+            currentShopMetrics.cart_actions > 0 || 
+            currentShopMetrics.wishlist_actions > 0 ||
+            currentShopMetrics.category_changes > 0 ||
+            currentShopMetrics.searches > 0) {
+          
+          const { error: shopError } = await supabase.from('otp_attempts').insert({
+            session_id: sessionId,
+            risk_score: 10,
+            otp_code: `SHOP_ACTIVITY_${Date.now()}`,
+            is_valid: true,
+            user_agent: navigator.userAgent,
+            metadata: currentShopMetrics
+          });
+          
+          if (shopError) {
+            console.error('❌ Failed to store shop activity:', shopError);
+          } else {
+            console.log('✅ Successfully stored shop activity');
+          }
+        }
+
       } catch (error) {
-        console.error('Failed to process activity metrics:', error);
+        console.error('❌ Complete analytics storage failed:', error);
       }
     };
+
+    const intervalId = setInterval(sendCompleteAnalytics, 10000); // Every 10 seconds
     
-    // Process metrics frequently to see results quickly during testing
-    const intervalId = setInterval(processActivityData, 3000);
-    
-    // Cleanup
-    return () => {
-      clearInterval(intervalId);
-      processActivityData(); // Final processing before unmount
-    };
-  }, [sessionId]);
+    return () => clearInterval(intervalId);
+  }, [analytics, sessionId, selectedCategory, searchTerm]);
   
   // Simplified tracking function that just updates local metrics instead of sending immediately
   const trackUserAction = React.useCallback((actionType: string, details: any) => {
