@@ -276,7 +276,7 @@ const ShopPage = () => {
           mouse_movements: Math.round(analytics.mouse?.totalDistance || 0),
           mouse_velocity: analytics.mouse?.averageSpeed || 0,
           mouse_idle_time: analytics.mouse?.idleTime || 0,
-          scroll_depth: analytics.scroll?.maxDepth || 0,
+          scroll_depth: Math.round(analytics.scroll?.maxDepth || 0),
           scroll_speed: analytics.scroll?.scrollSpeed || 0,
           scroll_events: Math.round((analytics.scroll?.totalScrollDistance || 0) / 100),
           focus_changes: analytics.focus?.focusEvents || 0,
