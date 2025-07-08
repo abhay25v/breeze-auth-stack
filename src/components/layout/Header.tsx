@@ -11,8 +11,15 @@ export const Header = () => {
   return (
     <header className="border-b bg-background">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-        <Link to="/" className="text-2xl font-bold text-primary">
-          MyApp
+        <Link to="/" className="flex items-center space-x-2">
+          <img 
+            src="/logo.png" 
+            alt="Breeze Auth Stack" 
+            className="h-12 w-12"
+          />
+          {/* <span className="text-xl font-bold text-primary hidden sm:block">
+            Breeze Auth Stack
+          </span> */}
         </Link>
         
         <nav className="flex items-center space-x-4">
@@ -26,11 +33,6 @@ export const Header = () => {
               <Link to="/shop">
                 <Button variant="ghost" size="sm">
                   Shop
-                </Button>
-              </Link>
-              <Link to="/analytics">
-                <Button variant="ghost" size="sm">
-                  Analytics
                 </Button>
               </Link>
               <Link to="/admin">
